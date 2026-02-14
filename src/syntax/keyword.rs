@@ -94,7 +94,7 @@ pub fn tblfm_keyword_nodes(input: Input) -> IResult<Input, Vec<GreenElement>, ()
     Ok((i, children))
 }
 
-fn keyword_node_base(input: Input) -> IResult<Input, (&str, Vec<GreenElement>), ()> {
+fn keyword_node_base(input: Input<'_>) -> IResult<Input<'_>, (&str, Vec<GreenElement>), ()> {
     let (input, (ws, hash_plus)) = tuple((space0, hash_plus_token))(input)?;
 
     let (input, (key, optional, colon)) = alt((key_with_optional, key))(input)?;
