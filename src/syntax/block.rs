@@ -1,10 +1,11 @@
+use nom::Parser;
 use nom::{
     branch::alt,
     bytes::complete::{tag, tag_no_case, take_while, take_while1},
     character::complete::{alpha1, space0, space1},
     combinator::{cond, opt},
-    sequence::{separated_pair, tuple},
-    IResult, InputTake,
+    sequence::separated_pair,
+    IResult, Input as _,
 };
 
 use super::{
@@ -57,7 +58,7 @@ fn block_node_base(input: Input) -> IResult<Input, GreenElement, ()> {
 }
 
 fn block_begin_node(input: Input<'_>) -> IResult<Input<'_>, (GreenElement, &str), ()> {
-    let (input, (ws1, begin, name)) = tuple((space0, tag_no_case("#+BEGIN_"), alpha1))(input)?;
+    let (input, (ws1, begin, name)) = (space0, tag_no_case("#+BEGIN_"), alpha1).parse(input)?;
 
     let mut b = NodeBuilder::new();
     b.ws(ws1);
@@ -65,11 +66,12 @@ fn block_begin_node(input: Input<'_>) -> IResult<Input<'_>, (GreenElement, &str)
     b.text(name);
 
     if name.eq_ignore_ascii_case("SRC") {
-        let (input, language) = opt(tuple((
+        let (input, language) = opt((
             space1,
             take_while1(|c: char| c != ' ' && c != '\t' && c != '\n' && c != '\r'),
-        )))(input)?;
-        let (input, switches) = opt(tuple((space1, source_block_switches)))(input)?;
+        ))
+        .parse(input)?;
+        let (input, switches) = opt((space1, source_block_switches)).parse(input)?;
         let (input, ws1) = space0(input)?;
         let (input, (parameters, ws2, nl)) = trim_line_end(input)?;
 
@@ -89,11 +91,12 @@ fn block_begin_node(input: Input<'_>) -> IResult<Input<'_>, (GreenElement, &str)
         b.nl(nl);
         Ok((input, (b.finish(BLOCK_BEGIN), name.as_str())))
     } else if name.eq_ignore_ascii_case("EXPORT") {
-        let (input, ty) = opt(tuple((
+        let (input, ty) = opt((
             space1,
             take_while1(|c: char| c != ' ' && c != '\t' && c != '\n' && c != '\r'),
-        )))(input)?;
-        let (input, data) = take_while(|c: char| c != '\n' && c != '\r')(input)?;
+        ))
+        .parse(input)?;
+        let (input, data) = take_while(|c: char| c != '\n' && c != '\r').parse(input)?;
         let (input, nl) = eol_or_eof(input)?;
 
         if let Some((ws, ty)) = ty {
@@ -104,7 +107,7 @@ fn block_begin_node(input: Input<'_>) -> IResult<Input<'_>, (GreenElement, &str)
         b.nl(nl);
         Ok((input, (b.finish(BLOCK_BEGIN), name.as_str())))
     } else {
-        let (input, data) = take_while(|c: char| c != '\n' && c != '\r')(input)?;
+        let (input, data) = take_while(|c: char| c != '\n' && c != '\r').parse(input)?;
         let (input, nl) = eol_or_eof(input)?;
 
         b.text(data);
@@ -117,7 +120,7 @@ fn source_block_switches(input: Input) -> IResult<Input, Input, ()> {
     let mut i = input;
 
     while !i.is_empty() {
-        match tuple::<_, _, (), _>((
+        let res: IResult<_, _, ()> = (
             cond(i.len() != input.len(), space1),
             alt((
                 separated_pair(
@@ -125,11 +128,12 @@ fn source_block_switches(input: Input) -> IResult<Input, Input, ()> {
                     space1,
                     take_while1(|c: char| c != ' ' && c != '\t' && c != '\n' && c != '\r'),
                 ),
-                tuple((tag("+"), alpha1)),
-                tuple((tag("-"), alpha1)),
+                (tag("+"), alpha1),
+                (tag("-"), alpha1),
             )),
-        ))(i)
-        {
+        )
+            .parse(i);
+        match res {
             Ok((i_, _)) => i = i_,
             _ => break,
         }
@@ -146,7 +150,7 @@ fn source_block_switches(input: Input) -> IResult<Input, Input, ()> {
 
 fn block_end_node<'a>(input: Input<'a>, name: &str) -> IResult<Input<'a>, GreenElement, ()> {
     let (input, (ws, end, name, ws_, nl)) =
-        tuple((space0, tag_no_case("#+END_"), tag(name), space0, eol_or_eof))(input)?;
+        (space0, tag_no_case("#+END_"), tag(name), space0, eol_or_eof).parse(input)?;
 
     let mut b = NodeBuilder::new();
     b.ws(ws);

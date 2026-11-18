@@ -1,12 +1,12 @@
 #![allow(clippy::type_complexity)]
+use nom::Parser;
 
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_till, take_while1},
     character::complete::space0,
     combinator::{recognize, verify},
-    sequence::tuple,
-    IResult, InputTake,
+    IResult, Input as _,
 };
 
 use super::{
@@ -95,9 +95,9 @@ pub fn tblfm_keyword_nodes(input: Input) -> IResult<Input, Vec<GreenElement>, ()
 }
 
 fn keyword_node_base(input: Input<'_>) -> IResult<Input<'_>, (&str, Vec<GreenElement>), ()> {
-    let (input, (ws, hash_plus)) = tuple((space0, hash_plus_token))(input)?;
+    let (input, (ws, hash_plus)) = (space0, hash_plus_token).parse(input)?;
 
-    let (input, (key, optional, colon)) = alt((key_with_optional, key))(input)?;
+    let (input, (key, optional, colon)) = alt((key_with_optional, key)).parse(input)?;
 
     let (input, (value, ws_, nl)) = trim_line_end(input)?;
 
@@ -126,12 +126,13 @@ fn keyword_node_base(input: Input<'_>) -> IResult<Input<'_>, (&str, Vec<GreenEle
 
 fn key(input: Input) -> IResult<Input, (Input, Option<(Input, Input, Input)>, Input), ()> {
     let (input, output) = verify(
-        recognize(tuple((
+        recognize((
             take_till(|c: char| c.is_ascii_whitespace() || c == ':'),
             take_while1(|c: char| c == ':'),
-        ))),
+        )),
         |i: &Input| i.len() >= 2,
-    )(input)?;
+    )
+    .parse(input)?;
     let (colon, key) = output.take_split(output.len() - 1);
     Ok((input, (key, None, colon)))
 }
@@ -139,13 +140,14 @@ fn key(input: Input) -> IResult<Input, (Input, Option<(Input, Input, Input)>, In
 fn key_with_optional(
     input: Input,
 ) -> IResult<Input, (Input, Option<(Input, Input, Input)>, Input), ()> {
-    let (input, (key, r_backer, optional, l_backer, colon)) = tuple((
+    let (input, (key, r_backer, optional, l_backer, colon)) = (
         alt((tag("CAPTION"), tag("RESULTS"))),
         tag("["),
         take_till(|c| c == '\r' || c == '\n' || c == ']'),
         tag("]"),
         tag(":"),
-    ))(input)?;
+    )
+        .parse(input)?;
     Ok((input, (key, Some((r_backer, optional, l_backer)), colon)))
 }
 

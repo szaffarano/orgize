@@ -1,3 +1,4 @@
+use nom::Parser;
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_while_m_n},
@@ -28,7 +29,7 @@ fn template1(input: Input) -> IResult<Input, GreenElement, ()> {
     if ENTITIES.iter().all(|i| i.0 != name.s) {
         return Err(nom::Err::Error(()));
     }
-    let (input, brackets) = opt(tag("{}"))(input)?;
+    let (input, brackets) = opt(tag("{}")).parse(input)?;
 
     if let Some(brackets) = brackets {
         return Ok((
@@ -55,8 +56,8 @@ fn template1(input: Input) -> IResult<Input, GreenElement, ()> {
 // \_SPACES
 fn template2(input: Input) -> IResult<Input, GreenElement, ()> {
     let (input, backslash) = backslash_token(input)?;
-    let (input, underscore) = tag("_")(input)?;
-    let (input, spaces) = take_while_m_n(1, 20, |c| c == ' ')(input)?;
+    let (input, underscore) = tag("_").parse(input)?;
+    let (input, spaces) = take_while_m_n(1, 20, |c| c == ' ').parse(input)?;
     Ok((
         input,
         node(
