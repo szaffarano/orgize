@@ -39,7 +39,7 @@ jiff = { version = "1.0.1", optional = true, default-features = false, features 
 jetscii = "0.5"
 memchr = "2.5"
 nom = { version = "7.1", default-features = false, features = ["std"] }
-rowan = "0.15"
+rowan = "0.17"
 tracing = { version = "0.1", optional = true }
 
 [dev-dependencies]
