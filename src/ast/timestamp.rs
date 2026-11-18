@@ -233,69 +233,68 @@ impl Timestamp {
         Some((mark, value, unit))
     }
 
-    /// Converts timestamp start to chrono NaiveDateTime
+    /// Converts timestamp start to a jiff civil `DateTime`
     ///
     /// ```rust
     /// use orgize::{Org, ast::Timestamp};
-    /// use chrono::NaiveDateTime;
+    /// use jiff::civil::DateTime;
     ///
     /// let ts = Org::parse("[2003-09-16 Tue 09:39-10:39]").first_node::<Timestamp>().unwrap();
-    /// assert_eq!(ts.start_to_chrono().unwrap(), "2003-09-16T09:39:00".parse::<NaiveDateTime>().unwrap());
+    /// assert_eq!(ts.start_to_datetime().unwrap(), "2003-09-16T09:39:00".parse::<DateTime>().unwrap());
     ///
     /// let ts = Org::parse("[2003-13-00 Tue 09:39-10:39]").first_node::<Timestamp>().unwrap();
-    /// assert!(ts.start_to_chrono().is_none());
+    /// assert!(ts.start_to_datetime().is_none());
     /// ```
-    #[cfg(feature = "chrono")]
-    pub fn start_to_chrono(&self) -> Option<chrono::NaiveDateTime> {
-        Some(chrono::NaiveDateTime::new(
-            chrono::NaiveDate::from_ymd_opt(
-                self.year_start()?.parse().ok()?,
-                self.month_start()?.parse().ok()?,
-                self.day_start()?.parse().ok()?,
-            )?,
-            chrono::NaiveTime::from_hms_opt(
-                self.hour_start()?.parse().ok()?,
-                self.minute_start()?.parse().ok()?,
-                0,
-            )?,
-        ))
+    #[cfg(feature = "datetime")]
+    pub fn start_to_datetime(&self) -> Option<jiff::civil::DateTime> {
+        jiff::civil::DateTime::new(
+            self.year_start()?.parse().ok()?,
+            self.month_start()?.parse().ok()?,
+            self.day_start()?.parse().ok()?,
+            self.hour_start()?.parse().ok()?,
+            self.minute_start()?.parse().ok()?,
+            0,
+            0,
+        )
+        .ok()
     }
 
-    /// Converts timestamp end to chrono NaiveDateTime
+    /// Converts timestamp end to a jiff civil `DateTime`
     ///
     /// ```rust
     /// use orgize::{Org, ast::Timestamp};
-    /// use chrono::NaiveDateTime;
+    /// use jiff::civil::DateTime;
     ///
     /// let ts = Org::parse("[2003-09-16 Tue 09:39-10:39]").first_node::<Timestamp>().unwrap();
-    /// assert_eq!(ts.end_to_chrono().unwrap(), "2003-09-16T10:39:00".parse::<NaiveDateTime>().unwrap());
+    /// assert_eq!(ts.end_to_datetime().unwrap(), "2003-09-16T10:39:00".parse::<DateTime>().unwrap());
     /// ```
-    #[cfg(feature = "chrono")]
-    pub fn end_to_chrono(&self) -> Option<chrono::NaiveDateTime> {
-        Some(chrono::NaiveDateTime::new(
-            chrono::NaiveDate::from_ymd_opt(
-                self.year_end()?.parse().ok()?,
-                self.month_end()?.parse().ok()?,
-                self.day_end()?.parse().ok()?,
-            )?,
-            chrono::NaiveTime::from_hms_opt(
-                self.hour_end()?.parse().ok()?,
-                self.minute_end()?.parse().ok()?,
-                0,
-            )?,
-        ))
+    #[cfg(feature = "datetime")]
+    pub fn end_to_datetime(&self) -> Option<jiff::civil::DateTime> {
+        jiff::civil::DateTime::new(
+            self.year_end()?.parse().ok()?,
+            self.month_end()?.parse().ok()?,
+            self.day_end()?.parse().ok()?,
+            self.hour_end()?.parse().ok()?,
+            self.minute_end()?.parse().ok()?,
+            0,
+            0,
+        )
+        .ok()
     }
 
-    /// Returns chrono::TimeDelta between timestamp start and end
+    /// Returns the `jiff::SignedDuration` between timestamp start and end
     ///
     /// ```rust
     /// use orgize::{Org, ast::Timestamp};
     ///
     /// let ts = Org::parse("[2003-09-16 Tue 09:39-10:39]").first_node::<Timestamp>().unwrap();
-    /// assert_eq!(ts.time_delta().unwrap().num_hours(), 1);
+    /// assert_eq!(ts.time_delta().unwrap().as_hours(), 1);
     /// ```
-    #[cfg(feature = "chrono")]
-    pub fn time_delta(&self) -> Option<chrono::TimeDelta> {
-        Some(self.end_to_chrono()? - self.start_to_chrono()?)
+    #[cfg(feature = "datetime")]
+    pub fn time_delta(&self) -> Option<jiff::SignedDuration> {
+        let start = self.start_to_datetime()?;
+        let end = self.end_to_datetime()?;
+        let span = start.until((jiff::Unit::Hour, end)).ok()?;
+        jiff::SignedDuration::try_from(span).ok()
     }
 }

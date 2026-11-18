@@ -105,7 +105,7 @@ Checkout `examples/html-slugify.rs` on how to customizing html export process.
 
 ## Features
 
-- **`chrono`**: adds the ability to convert `Timestamp` into `chrono::NaiveDateTime`, disabled by default.
+- **`datetime`**: adds the ability to convert `Timestamp` into `jiff::civil::DateTime`, disabled by default.
 
 - **`indexmap`**: adds the ability to convert `PropertyDrawer` properties into `IndexMap`, disabled by default.
 
