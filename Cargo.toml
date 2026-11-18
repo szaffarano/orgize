@@ -43,7 +43,7 @@ rowan = "0.15"
 tracing = { version = "0.1", optional = true }
 
 [dev-dependencies]
-criterion = "0.5"
+criterion = "0.8"
 insta = "1.29"
 slugify = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt"] }
