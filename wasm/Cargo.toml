@@ -3,7 +3,7 @@ name = "orgize-wasm"
 publish = false
 version = "0.10.0-alpha.7"
 authors = ["PoiScript <poiscript@gmail.com>"]
-repository = "https://github.com/PoiScript/orgize"
+repository = "https://github.com/szaffarano/orgize"
 edition = "2021"
 license = "MIT"
 
@@ -11,5 +11,5 @@ license = "MIT"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-orgize = { path = ".." }
+orgize = { package = "orgize-ng", path = ".." }
 wasm-bindgen = "0.2"

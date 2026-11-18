@@ -3,15 +3,21 @@ resolver = "2"
 members = [".", "./wasm"]
 
 [package]
-name = "orgize"
+name = "orgize-ng"
 version = "0.10.0-alpha.10"
-authors = ["PoiScript <poiscript@gmail.com>"]
-repository = "https://github.com/PoiScript/orgize"
+authors = [
+  "PoiScript <poiscript@gmail.com>",
+  "Sebastián Zaffarano <sebas@zaffarano.com.ar>",
+]
+repository = "https://github.com/szaffarano/orgize"
 edition = "2021"
 license = "MIT"
-description = "A Rust library for parsing org-mode files."
+description = "A Rust library for parsing org-mode files (maintained fork of orgize)."
 readme = "README.md"
 keywords = ["orgmode", "org-mode", "emacs", "parser"]
+
+[lib]
+name = "orgize"
 
 [package.metadata.docs.rs]
 all-features = true
