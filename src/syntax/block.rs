@@ -56,7 +56,7 @@ fn block_node_base(input: Input) -> IResult<Input, GreenElement, ()> {
     Err(nom::Err::Error(()))
 }
 
-fn block_begin_node(input: Input) -> IResult<Input, (GreenElement, &str), ()> {
+fn block_begin_node(input: Input<'_>) -> IResult<Input<'_>, (GreenElement, &str), ()> {
     let (input, (ws1, begin, name)) = tuple((space0, tag_no_case("#+BEGIN_"), alpha1))(input)?;
 
     let mut b = NodeBuilder::new();

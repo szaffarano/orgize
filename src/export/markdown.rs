@@ -140,7 +140,7 @@ impl Traverser for MarkdownExport {
                 }
 
                 if !link.has_description() {
-                    let _ = write!(&mut self.output, r#"[{}]({})"#, &path, &path);
+                    let _ = write!(&mut self.output, r#"[{}]({})"#, path, path);
                     return ctx.skip();
                 }
 
@@ -172,10 +172,10 @@ impl Traverser for MarkdownExport {
             Event::Timestamp(_timestamp) => {}
 
             Event::LatexFragment(latex) => {
-                let _ = write!(&mut self.output, "{}", &latex.syntax);
+                let _ = write!(&mut self.output, "{}", latex.syntax);
             }
             Event::LatexEnvironment(latex) => {
-                let _ = write!(&mut self.output, "{}", &latex.syntax);
+                let _ = write!(&mut self.output, "{}", latex.syntax);
             }
 
             Event::Entity(entity) => self.output += entity.utf8(),

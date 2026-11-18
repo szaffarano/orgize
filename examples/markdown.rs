@@ -17,7 +17,7 @@ fn main() {
     let mut export = MarkdownExport::default();
     Org::parse(content).traverse(&mut export);
 
-    fs::write(format!("{}.md", &args[1]), export.finish()).unwrap();
+    fs::write(format!("{}.md", args[1]), export.finish()).unwrap();
 
-    println!("Wrote to {}.md", &args[1]);
+    println!("Wrote to {}.md", args[1]);
 }

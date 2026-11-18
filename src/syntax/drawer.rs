@@ -16,7 +16,7 @@ use super::{
     SyntaxKind::*,
 };
 
-fn drawer_begin_node(input: Input) -> IResult<Input, (GreenElement, &str), ()> {
+fn drawer_begin_node(input: Input<'_>) -> IResult<Input<'_>, (GreenElement, &str), ()> {
     let mut b = NodeBuilder::new();
 
     let (input, (ws, colon, name, colon_, ws_, nl)) = tuple((
