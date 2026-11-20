@@ -210,6 +210,14 @@ fn list_item_tag(input: Input) -> IResult<Input, (GreenElement, Input), ()> {
     let (input, ws) = space0(input)?;
     let (input, colon2) = colon2_token(input)?;
 
+    // `::` ends a tag only before whitespace or EOL, not inside e.g. `[[file::heading]]`
+    if !matches!(
+        input.s.chars().next(),
+        None | Some(' ' | '\t' | '\r' | '\n')
+    ) {
+        return Err(nom::Err::Error(()));
+    }
+
     let mut children = standard_object_nodes(tag);
     children.push(colon2);
 
@@ -618,4 +626,26 @@ fn parse() {
     assert!(list_node(("-a", config).into()).is_err());
     assert!(list_node(("*\r\n", config).into()).is_err());
     assert!(list_node(("* ", config).into()).is_err());
+}
+
+#[test]
+fn link_with_search_option_is_not_a_tag() {
+    use crate::Org;
+
+    for s in [
+        "- [[test.org::Heading]]\n",
+        "- [[test.org::#1]]\n",
+        "- see [[test.org::#1]]\n",
+    ] {
+        let org = Org::parse(s);
+        assert_eq!(org.to_org(), s);
+        assert!(
+            !org.to_html().contains("<dl>"),
+            "{s:?} -> {}",
+            org.to_html()
+        );
+    }
+
+    assert!(Org::parse("- tag :: desc\n").to_html().contains("<dl>"));
+    assert!(Org::parse("- tag ::\n").to_html().contains("<dl>"));
 }
