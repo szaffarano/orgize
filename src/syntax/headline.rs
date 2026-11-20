@@ -173,7 +173,7 @@ fn headline_tags_node(input: Input) -> IResult<Input, GreenElement, ()> {
         } else if String::from_utf8_lossy(item)
             .chars()
             // https://github.com/yyr/org-mode/blob/d8494b5668ad4d4e68e83228ae8451eaa01d2220/lisp/org-element.el#L922C25-L922C32
-            .all(|c| c.is_alphanumeric() || c == '_' || c == '@' || c == '#' || c == '%')
+            .all(input.c.is_tag_char)
         {
             children.push(input.slice(ii + 1..i).text_token());
             children.push(token(COLON, ":"));
@@ -367,4 +367,22 @@ fn issue_15_16() {
         vec!["余".to_string(), "破".to_string()],
         tags.map(|x| x.to_string()).collect::<Vec<_>>(),
     );
+}
+
+#[test]
+fn custom_tag_char() {
+    use crate::ParseConfig;
+
+    let tag_count = |config: &ParseConfig| {
+        let org = config.clone().parse("* a :x-y:\n");
+        org.document().headlines().next().unwrap().tags().count()
+    };
+
+    assert_eq!(tag_count(&ParseConfig::default()), 0);
+
+    let config = ParseConfig {
+        is_tag_char: |c| c.is_alphanumeric() || c == '-',
+        ..Default::default()
+    };
+    assert_eq!(tag_count(&config), 1);
 }
