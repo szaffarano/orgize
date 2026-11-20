@@ -44,7 +44,12 @@ fn block_node_base(input: Input) -> IResult<Input, GreenElement, ()> {
             children.push(block_begin);
             children.extend(pre_blank);
             if kind.is_greater_element() {
-                children.push(node(BLOCK_CONTENT, element_nodes(contents)?));
+                let elements = if contents.is_empty() {
+                    vec![]
+                } else {
+                    element_nodes(contents)?
+                };
+                children.push(node(BLOCK_CONTENT, elements));
             } else {
                 children.push(node(BLOCK_CONTENT, comma_quoted_text_nodes(contents)));
             }
@@ -306,4 +311,18 @@ alert('Hello World!');
     );
 
     // TODO: more testing
+}
+
+#[test]
+fn empty_greater_block() {
+    use crate::Org;
+
+    for s in [
+        "#+begin_quote\n#+end_quote\n",
+        "#+begin_center\n#+end_center\n",
+        "#+begin_note\n\n#+end_note\n",
+        "* h\n#+begin_quote\n#+end_quote\n",
+    ] {
+        assert_eq!(Org::parse(s).to_org(), s);
+    }
 }
