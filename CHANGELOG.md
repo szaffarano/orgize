@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+## [0.10.0-alpha.12](https://github.com/szaffarano/orgize/compare/v0.10.0-alpha.11...v0.10.0-alpha.12)
+
+### ✨ Features
+
+
+- *(config)* Allow customising headline tag characters ([#21](https://github.com/szaffarano/orgize/pull/21)) - ([351dea5](https://github.com/szaffarano/orgize/commit/351dea5263b27a1df59cdace586ec8efe2268a8b))
+
+### 🐛 Bug Fixes
+
+
+- *(block)* Don't parse empty contents of greater blocks ([#22](https://github.com/szaffarano/orgize/pull/22)) - ([a3f155b](https://github.com/szaffarano/orgize/commit/a3f155b2f03ffb8c2898a6516c05d98e176feb1b))
+- *(headline)* Support multi-digit numeric priorities ([#24](https://github.com/szaffarano/orgize/pull/24)) - ([f27a40b](https://github.com/szaffarano/orgize/commit/f27a40b564d46e63cc717703bf568ad7c786393d))
+- *(link)* Allow newlines inside bracket link path ([#20](https://github.com/szaffarano/orgize/pull/20)) - ([34e53bc](https://github.com/szaffarano/orgize/commit/34e53bc03e468ff2eb53fb150c59745311371d8a))
+- *(list)* Don't treat '::' inside a link as a list item tag separator ([#25](https://github.com/szaffarano/orgize/pull/25)) - ([af80984](https://github.com/szaffarano/orgize/commit/af8098414bfca1b8e2a7028b78a35990549b8783))
+- *(table)* Keep empty cells in standard table rows ([#23](https://github.com/szaffarano/orgize/pull/23)) - ([4aa769a](https://github.com/szaffarano/orgize/commit/4aa769a6255b9e78a98f9ab9c8c994502750e44a))
+
+### Other changes
+
+
+- *(readme)* Clarify this is a maintained fork of orgize ([#26](https://github.com/szaffarano/orgize/pull/26)) - ([8a0802e](https://github.com/szaffarano/orgize/commit/8a0802ee17cb670c4f5ce571ecac8644d4a5c766))
+
+
 ## [0.10.0-alpha.11](https://github.com/szaffarano/orgize/compare/v0.10.0-alpha.10...v0.10.0-alpha.11)
 
 ### 🐛 Bug Fixes

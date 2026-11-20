@@ -4,7 +4,7 @@ members = [".", "./wasm"]
 
 [package]
 name = "orgize-ng"
-version = "0.10.0-alpha.11"
+version = "0.10.0-alpha.12"
 authors = [
   "PoiScript <poiscript@gmail.com>",
   "Sebastián Zaffarano <sebas@zaffarano.com.ar>",
