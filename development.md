@@ -6,6 +6,16 @@ cargo test --all-features
 cargo clippy --allow-dirty --allow-staged
 ```
 
+## Corpus round-trip
+
+Checks that `Org::parse(s).to_org() == s` for every `.org` file in pinned
+checkouts of org-mode and Worg:
+
+```shell
+scripts/fetch-corpus.sh
+ORGIZE_CORPUS=target/corpus cargo test --all-features --test corpus -- --ignored
+```
+
 ## Update snapshot testing
 
 ```shell
