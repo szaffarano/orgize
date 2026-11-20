@@ -1,7 +1,7 @@
 use nom::{
     bytes::complete::take_while,
     character::complete::{multispace0, space0},
-    combinator::iterator,
+    combinator::{iterator, opt, peek},
     Err, IResult, Input as _,
 };
 
@@ -60,14 +60,23 @@ fn table_standard_row_node(input: Input) -> Result<GreenElement, nom::Err<()>> {
 
     let mut it = iterator(
         input,
-        (pipe_token, multispace0, take_while(|c: char| c != '|')),
+        (
+            pipe_token,
+            multispace0,
+            take_while(|c: char| c != '|'),
+            peek(opt(pipe_token)),
+        ),
     );
 
-    it.by_ref().for_each(|(pipe, ws, input)| {
+    it.by_ref().for_each(|(pipe, ws, input, next_pipe)| {
         b.push(pipe);
         b.ws(ws);
 
         if input.is_empty() {
+            // `|   |`: the whitespace was consumed above, but the cell still exists
+            if next_pipe.is_some() {
+                b.push(node(ORG_TABLE_CELL, vec![]));
+            }
             return;
         }
 
@@ -261,4 +270,17 @@ fn parse_table_el() {
 
     assert!(table_el_node(("", config).into()).is_err());
     assert!(table_el_node(("+----|---", config).into()).is_err());
+}
+
+#[test]
+fn empty_cells() {
+    use crate::Org;
+
+    let org = Org::parse("| a | b |\n|   | b |\n|| c |\n");
+    assert_eq!(org.to_org(), "| a | b |\n|   | b |\n|| c |\n");
+    assert_eq!(
+        org.to_html(),
+        "<main><section><table><tbody><tr><td>a</td><td>b</td></tr>\
+         <tr><td></td><td>b</td></tr><tr><td></td><td>c</td></tr></tbody></table></section></main>"
+    );
 }
