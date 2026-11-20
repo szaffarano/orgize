@@ -1,9 +1,10 @@
 use memchr::memrchr_iter;
 use nom::Parser;
 use nom::{
-    bytes::complete::take_while1,
+    branch::alt,
+    bytes::complete::{take_while1, take_while_m_n},
     character::complete::{anychar, space0},
-    combinator::{map, opt},
+    combinator::{map, opt, recognize},
     IResult, Input as _,
 };
 
@@ -220,11 +221,20 @@ fn headline_keyword_token(input: Input) -> IResult<Input, (GreenElement, Input),
 
 fn headline_priority_node(input: Input) -> IResult<Input, (GreenElement, Input), ()> {
     let (input, node) = map(
-        (l_bracket_token, hash_token, anychar, r_bracket_token),
-        |(l_bracket, hash, char, r_bracket)| {
+        (
+            l_bracket_token,
+            hash_token,
+            // org-mode priorities are a letter or a number up to 64
+            alt((
+                take_while_m_n(1, 2, |c: char| c.is_ascii_digit()),
+                recognize(anychar),
+            )),
+            r_bracket_token,
+        ),
+        |(l_bracket, hash, priority, r_bracket)| {
             node(
                 HEADLINE_PRIORITY,
-                [l_bracket, hash, token(TEXT, &char.to_string()), r_bracket],
+                [l_bracket, hash, priority.token(TEXT), r_bracket],
             )
         },
     )
@@ -385,4 +395,23 @@ fn custom_tag_char() {
         ..Default::default()
     };
     assert_eq!(tag_count(&config), 1);
+}
+
+#[test]
+fn multi_digit_priority() {
+    use crate::{ast::Headline, tests::to_ast};
+
+    let to_headline = to_ast::<Headline>(headline_node);
+
+    for (src, priority, title) in [
+        ("* TODO [#42] Multi\n", "42", "Multi"),
+        ("* [#1] one\n", "1", "one"),
+        ("* [#A] letter\n", "A", "letter"),
+    ] {
+        let hdl = to_headline(src);
+        assert_eq!(hdl.priority().unwrap(), priority);
+        assert_eq!(hdl.title_raw(), title);
+    }
+
+    assert!(to_headline("* [#123] too long\n").priority().is_none());
 }
