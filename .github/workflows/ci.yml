@@ -37,6 +37,25 @@ jobs:
         # `--all-targets` can't compile the bench harness in CI.
         run: cargo clippy --lib --tests --examples --all-features -- -D warnings
 
+  corpus:
+    name: Corpus round-trip
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Fetch org-mode and Worg
+        run: scripts/fetch-corpus.sh
+
+      - name: Round-trip
+        run: cargo test --all-features --test corpus -- --ignored
+        env:
+          ORGIZE_CORPUS: target/corpus
+
   gh-pages:
     if: github.ref == 'refs/heads/v0.10'
 
