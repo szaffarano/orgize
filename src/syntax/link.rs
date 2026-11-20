@@ -21,7 +21,7 @@ pub fn link_node(input: Input) -> IResult<Input, GreenElement, ()> {
     let mut parser = map(
         (
             l_bracket2_token,
-            take_while(|c: char| c != '<' && c != '>' && c != '\n' && c != ']'),
+            take_while(|c: char| c != '<' && c != '>' && c != ']'),
             opt((
                 r_bracket_token,
                 l_bracket_token,
@@ -108,4 +108,31 @@ fn parse() {
     let config = &ParseConfig::default();
 
     assert!(link_node(("[[#id][desc]", config).into()).is_err());
+}
+
+#[test]
+fn parse_multiline_link() {
+    use crate::{ast::Link, tests::to_ast, Org};
+    use rowan::ast::AstNode;
+
+    let to_link = to_ast::<Link>(link_node);
+
+    let link = to_link("[[really long link\nthat keeps going]]");
+    assert_eq!(link.syntax.text(), "[[really long link\nthat keeps going]]");
+
+    let link = to_link("[[https://example.com][some\ndescription]]");
+    assert_eq!(
+        link.syntax.text(),
+        "[[https://example.com][some\ndescription]]"
+    );
+
+    let org = Org::parse("a [[really long link\nthat keeps going]] b\n");
+    assert_eq!(
+        org.document()
+            .syntax()
+            .descendants()
+            .filter_map(Link::cast)
+            .count(),
+        1
+    );
 }
