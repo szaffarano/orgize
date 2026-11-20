@@ -1,7 +1,7 @@
 # Orgize
 
-[![Crates.io](https://img.shields.io/crates/v/orgize.svg)](https://crates.io/crates/orgize)
-[![Documentation](https://docs.rs/orgize/badge.svg)](https://docs.rs/orgize)
+[![Crates.io](https://img.shields.io/crates/v/orgize-ng.svg)](https://crates.io/crates/orgize-ng)
+[![Documentation](https://docs.rs/orgize-ng/badge.svg)](https://docs.rs/orgize-ng)
 [![Build status](https://img.shields.io/github/actions/workflow/status/szaffarano/orgize/ci.yml)](https://github.com/szaffarano/orgize/actions/workflows/ci.yml)
 ![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)
 
@@ -9,9 +9,26 @@ A Rust library for parsing org-mode files.
 
 Live Demo: <https://szaffarano.github.io/orgize/>
 
+## About this fork
+
+This is a maintained fork of [PoiScript/orgize](https://github.com/PoiScript/orgize),
+which has had no recent activity. Many thanks to PoiScript for creating it. The goal here is
+to keep the crate alive: updated dependencies, CI, and bug fixes (including some
+pending upstream pull requests and issues).
+
+It is published as [`orgize-ng`](https://crates.io/crates/orgize-ng), while the library is
+still named `orgize`, so existing code keeps working:
+
+```toml
+[dependencies]
+orgize = { package = "orgize-ng", version = "0.10.0-alpha.11" }
+```
+
+If the upstream project becomes active again, this fork can be retired or merged back.
+
 ## Parse
 
-To parse a org-mode string, simply invoking the `Org::parse` function:
+Parse an org-mode string with `Org::parse`:
 
 ```rust
 use orgize::{Org, rowan::ast::AstNode};
@@ -34,7 +51,7 @@ assert_eq!(
 "#);
 ```
 
-use `ParseConfig::parse` to specific a custom parse config
+Use `ParseConfig::parse` for a custom parse config:
 
 ```rust
 use orgize::{Org, ParseConfig, ast::Headline};
@@ -90,7 +107,7 @@ assert_eq!(org.to_org(), "** WORLD!");
 
 ## Render to html
 
-Call the `Org::to_html` function to export org element tree to html:
+Use `Org::to_html` to export the syntax tree to HTML:
 
 ```rust
 use orgize::Org;
@@ -101,7 +118,7 @@ assert_eq!(
 );
 ```
 
-Checkout `examples/html-slugify.rs` on how to customizing html export process.
+See `examples/html-slugify.rs` for how to customize the HTML export.
 
 ## Features
 
@@ -111,9 +128,7 @@ Checkout `examples/html-slugify.rs` on how to customizing html export process.
 
 ## API compatibility
 
-`element.syntax()` exposes access to the internal syntax tree, along with some rowan low-level APIs.
-This can be useful for intricate tasks.
+`element.syntax()` exposes the internal syntax tree and some low-level rowan APIs, which is useful for intricate tasks.
 
-However, the structure of the internal syntax tree can change between different versions of the library.
-Because of this, the result of `element.syntax()` doesn't follow semantic versioning,
-which means updates might break your code if it relies on this method.
+The tree structure can change between versions, so `element.syntax()` is not covered by semantic
+versioning: updates might break code that relies on it.
