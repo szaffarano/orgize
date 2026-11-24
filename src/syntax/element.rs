@@ -2,6 +2,7 @@ use std::iter::once;
 
 use memchr::memchr2_iter;
 use nom::{IResult, Input as _};
+use rowan::GreenNode;
 
 use super::{
     block::block_node,
@@ -70,7 +71,7 @@ pub fn element_nodes(input: Input) -> Result<Vec<GreenElement>, nom::Err<()>> {
     feature = "tracing",
     tracing::instrument(level = "debug", skip(input), fields(input = input.s))
 )]
-pub fn element_node(input: Input) -> IResult<Input, GreenElement, ()> {
+pub fn element_node<'a>(input: Input<'a>) -> IResult<Input<'a>, GreenElement, ()> {
     // skip affiliated keyword first
     let (i, nodes) = affiliated_keyword_nodes(input)?;
 
@@ -85,20 +86,46 @@ pub fn element_node(input: Input) -> IResult<Input, GreenElement, ()> {
         input.s
     );
 
+    // parsers below don't skip affiliated keywords themselves: run them on the
+    // input after the keywords, then put the keywords in front of the element
+    let with_keywords = |(input, element): (Input<'a>, GreenElement)| {
+        let GreenElement::Node(node) = element else {
+            return (input, element);
+        };
+        if nodes.is_empty() {
+            return (input, GreenElement::Node(node));
+        }
+        let children = nodes
+            .iter()
+            .cloned()
+            .chain(node.children().map(|c| c.to_owned()))
+            .collect::<Vec<_>>();
+        (
+            input,
+            GreenElement::Node(GreenNode::new(node.kind(), children)),
+        )
+    };
+
     let result = match byte {
         Some(b'[') => fn_def_node(input),
         Some(b'0'..=b'9') | Some(b'*') => list_node(input),
         // clock doesn't have affiliated keywords
         Some(b'C') if !has_affiliated_keyword => clock_node(input),
-        Some(b'-') => rule_node(input).or_else(|_| list_node(input)),
-        Some(b':') => drawer_node(input).or_else(|_| fixed_width_node(input)),
-        Some(b'|') => org_table_node(input),
-        Some(b'+') => table_el_node(input).or_else(|_| list_node(input)),
+        Some(b'-') => rule_node(i)
+            .map(with_keywords)
+            .or_else(|_| list_node(input)),
+        Some(b':') => drawer_node(i)
+            .map(with_keywords)
+            .or_else(|_| fixed_width_node(input)),
+        Some(b'|') => org_table_node(i).map(with_keywords),
+        Some(b'+') => table_el_node(i)
+            .map(with_keywords)
+            .or_else(|_| list_node(input)),
         Some(b'#') => block_node(input)
+            .or_else(|_| dyn_block_node(i).map(with_keywords))
             .or_else(|_| keyword_node(input))
-            .or_else(|_| dyn_block_node(input))
             .or_else(|_| comment_node(input)),
-        Some(b'\\') => latex_environment_node(input),
+        Some(b'\\') => latex_environment_node(i).map(with_keywords),
         _ => Err(nom::Err::Error(())),
     };
 
@@ -335,5 +362,105 @@ fn affiliated_keywords() {
         COLON@9..10 ":"
         TEXT@10..26 " Longer caption."
     "###
+    );
+}
+
+#[test]
+fn affiliated_keywords_before_any_element() {
+    use crate::syntax::{SyntaxKind, SyntaxNode};
+    use crate::{syntax::combinator::node, ParseConfig};
+
+    let t = |input: &str| {
+        let config = &ParseConfig::default();
+        let children = element_nodes((input, config).into()).unwrap();
+        SyntaxNode::new_root(node(SyntaxKind::SECTION, children).into_node().unwrap())
+    };
+
+    insta::assert_debug_snapshot!(
+        t("#+NAME: t\n| a |\n\n#+caption: c\n:NOTES:\nx\n:END:\n\n#+NAME: r\n-----\n"),
+        @r##"
+    SECTION@0..63
+      ORG_TABLE@0..17
+        AFFILIATED_KEYWORD@0..10
+          HASH_PLUS@0..2 "#+"
+          TEXT@2..6 "NAME"
+          COLON@6..7 ":"
+          TEXT@7..9 " t"
+          NEW_LINE@9..10 "\n"
+        ORG_TABLE_STANDARD_ROW@10..16
+          PIPE@10..11 "|"
+          WHITESPACE@11..12 " "
+          ORG_TABLE_CELL@12..13
+            TEXT@12..13 "a"
+          WHITESPACE@13..14 " "
+          PIPE@14..15 "|"
+          WHITESPACE@15..16 "\n"
+        BLANK_LINE@16..17 "\n"
+      DRAWER@17..47
+        AFFILIATED_KEYWORD@17..30
+          HASH_PLUS@17..19 "#+"
+          TEXT@19..26 "caption"
+          COLON@26..27 ":"
+          TEXT@27..29 " c"
+          NEW_LINE@29..30 "\n"
+        DRAWER_BEGIN@30..38
+          COLON@30..31 ":"
+          TEXT@31..36 "NOTES"
+          COLON@36..37 ":"
+          NEW_LINE@37..38 "\n"
+        DRAWER_CONTENT@38..40
+          PARAGRAPH@38..40
+            TEXT@38..40 "x\n"
+        DRAWER_END@40..46
+          COLON@40..41 ":"
+          TEXT@41..44 "END"
+          COLON@44..45 ":"
+          NEW_LINE@45..46 "\n"
+        BLANK_LINE@46..47 "\n"
+      RULE@47..63
+        AFFILIATED_KEYWORD@47..57
+          HASH_PLUS@47..49 "#+"
+          TEXT@49..53 "NAME"
+          COLON@53..54 ":"
+          TEXT@54..56 " r"
+          NEW_LINE@56..57 "\n"
+        TEXT@57..62 "-----"
+        NEW_LINE@62..63 "\n"
+    "##
+    );
+
+    insta::assert_debug_snapshot!(
+        t("#+NAME: l\n\\begin{x}\n\\end{x}\n#+NAME: t\n+--+\n|  |\n+--+\n"),
+        @r##"
+    SECTION@0..53
+      LATEX_ENVIRONMENT@0..28
+        AFFILIATED_KEYWORD@0..10
+          HASH_PLUS@0..2 "#+"
+          TEXT@2..6 "NAME"
+          COLON@6..7 ":"
+          TEXT@7..9 " l"
+          NEW_LINE@9..10 "\n"
+        WHITESPACE@10..10 ""
+        TEXT@10..16 "\\begin"
+        L_CURLY@16..17 "{"
+        TEXT@17..18 "x"
+        R_CURLY@18..19 "}"
+        TEXT@19..20 "\n"
+        WHITESPACE@20..20 ""
+        TEXT@20..24 "\\end"
+        L_CURLY@24..25 "{"
+        TEXT@25..26 "x"
+        R_CURLY@26..27 "}"
+        WHITESPACE@27..27 ""
+        NEW_LINE@27..28 "\n"
+      TABLE_EL@28..53
+        AFFILIATED_KEYWORD@28..38
+          HASH_PLUS@28..30 "#+"
+          TEXT@30..34 "NAME"
+          COLON@34..35 ":"
+          TEXT@35..37 " t"
+          NEW_LINE@37..38 "\n"
+        TEXT@38..53 "+--+\n|  |\n+--+\n"
+    "##
     );
 }

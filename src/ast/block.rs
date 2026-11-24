@@ -155,15 +155,18 @@ impl ExportBlock {
 
 macro_rules! impl_content_border {
     ($block:ident) => {
+        impl_content_border!($block, BLOCK_BEGIN, BLOCK_END);
+    };
+    ($block:ident, $begin:ident, $end:ident) => {
         impl $block {
             /// Beginning position of block content
             pub fn content_start(&self) -> TextSize {
                 self.syntax
                     .children()
-                    .find(|n| n.kind() == SyntaxKind::BLOCK_BEGIN)
+                    .find(|n| n.kind() == SyntaxKind::$begin)
                     .map(|n| n.text_range().end())
                     .unwrap_or_else(|| {
-                        debug_assert!(false, "block must contains BLOCK_BEGIN");
+                        debug_assert!(false, concat!("block must contain ", stringify!($begin)));
                         TextSize::default()
                     })
             }
@@ -172,10 +175,10 @@ macro_rules! impl_content_border {
             pub fn content_end(&self) -> TextSize {
                 self.syntax
                     .children()
-                    .find(|n| n.kind() == SyntaxKind::BLOCK_END)
+                    .find(|n| n.kind() == SyntaxKind::$end)
                     .map(|n| n.text_range().start())
                     .unwrap_or_else(|| {
-                        debug_assert!(false, "block must contains BLOCK_END");
+                        debug_assert!(false, concat!("block must contain ", stringify!($end)));
                         TextSize::default()
                     })
             }
@@ -191,4 +194,4 @@ impl_content_border!(ExampleBlock);
 impl_content_border!(QuoteBlock);
 impl_content_border!(SpecialBlock);
 impl_content_border!(VerseBlock);
-impl_content_border!(DynBlock);
+impl_content_border!(DynBlock, DYN_BLOCK_BEGIN, DYN_BLOCK_END);
