@@ -57,7 +57,7 @@ jobs:
           ORGIZE_CORPUS: target/corpus
 
   gh-pages:
-    if: github.ref == 'refs/heads/v0.10'
+    if: github.ref == 'refs/heads/master'
 
     permissions:
       contents: read

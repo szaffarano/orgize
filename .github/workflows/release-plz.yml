@@ -3,7 +3,7 @@ name: Release-plz
 on:
   push:
     branches:
-      - v0.10
+      - master
 
 jobs:
   # Release unpublished packages.
