@@ -318,10 +318,6 @@ impl NodeBuilder {
         }
     }
 
-    pub fn len(&self) -> usize {
-        self.children.len()
-    }
-
     pub fn finish(self, kind: SyntaxKind) -> GreenElement {
         GreenElement::Node(GreenNode::new(kind.into(), self.children))
     }
