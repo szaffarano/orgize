@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [0.10.0-alpha.13](https://github.com/szaffarano/orgize/compare/v0.10.0-alpha.12...v0.10.0-alpha.13)
+
+### 🐛 Bug Fixes
+
+
+- *(keyword)* Match affiliated keywords case-insensitively ([#30](https://github.com/szaffarano/orgize/pull/30)) - ([7c75194](https://github.com/szaffarano/orgize/commit/7c751941c68d4dce8cd1450b321bbb07544e4043))
+- *(timestamp)* Parse habit repeaters ([#29](https://github.com/szaffarano/orgize/pull/29)) - ([76ec77d](https://github.com/szaffarano/orgize/commit/76ec77d5b9688abef485f15809c739cc95bb6541))
+
+### ⚙️ Miscellaneous Tasks
+
+
+- Round-trip pinned org-mode and Worg checkouts ([#28](https://github.com/szaffarano/orgize/pull/28)) - ([d4967d5](https://github.com/szaffarano/orgize/commit/d4967d55f3409532de50abab0d00c4abf88d8438))
+
+
 ## [0.10.0-alpha.12](https://github.com/szaffarano/orgize/compare/v0.10.0-alpha.11...v0.10.0-alpha.12)
 
 ### ✨ Features
