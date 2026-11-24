@@ -2,9 +2,8 @@ use nom::Parser;
 use nom::{
     branch::alt,
     bytes::complete::{tag, tag_no_case, take_while, take_while1},
-    character::complete::{alpha1, space0, space1},
-    combinator::{cond, opt},
-    sequence::separated_pair,
+    character::complete::{alpha1, digit1, space0, space1},
+    combinator::{opt, recognize},
     IResult, Input as _,
 };
 
@@ -121,36 +120,38 @@ fn block_begin_node(input: Input<'_>) -> IResult<Input<'_>, (GreenElement, &str)
     }
 }
 
+/// Recognizes source block switches, as Org's `org-element-src-block-parser`
+/// does: `-l "FORMAT"`, `-i`, `-k`, `-r`, and `-n` or `+n` with an optional
+/// number, separated by spaces
 fn source_block_switches(input: Input) -> IResult<Input, Input, ()> {
-    let mut i = input;
-
-    while !i.is_empty() {
-        let res: IResult<_, _, ()> = (
-            cond(i.len() != input.len(), space1),
-            alt((
-                separated_pair(
-                    alt((tag("-l"), tag("-n"))),
-                    space1,
-                    take_while1(|c: char| c != ' ' && c != '\t' && c != '\n' && c != '\r'),
-                ),
-                (tag("+"), alpha1),
-                (tag("-"), alpha1),
+    fn switch(i: Input) -> IResult<Input, Input, ()> {
+        alt((
+            recognize((tag("-l"), take_while1(|c| c == ' '), quoted)),
+            recognize(alt((tag("-i"), tag("-k"), tag("-r")))),
+            recognize((
+                alt((tag("-n"), tag("+n"))),
+                opt((take_while(|c| c == ' '), digit1)),
             )),
-        )
-            .parse(i);
-        match res {
-            Ok((i_, _)) => i = i_,
-            _ => break,
+        ))
+        .parse(i)
+    }
+
+    // `".+"`: from a double quote to the last double quote on the line
+    fn quoted(i: Input) -> IResult<Input, Input, ()> {
+        let line = i.as_str().split(['\n', '\r']).next().unwrap_or_default();
+        match line.rfind('"') {
+            Some(end) if line.starts_with('"') && end >= 2 => Ok(i.take_split(end + 1)),
+            _ => Err(nom::Err::Error(())),
         }
     }
 
-    let len = input.len() - i.len();
+    let (mut i, _) = switch(input)?;
 
-    if len == 0 {
-        Err(nom::Err::Error(()))
-    } else {
-        Ok(input.take_split(len))
+    while let Ok((i_, _)) = (take_while1(|c| c == ' '), switch).parse(i) {
+        i = i_;
     }
+
+    Ok(input.take_split(input.len() - i.len()))
 }
 
 fn block_end_node<'a>(input: Input<'a>, name: &str) -> IResult<Input<'a>, GreenElement, ()> {
@@ -325,4 +326,55 @@ fn empty_greater_block() {
     ] {
         assert_eq!(Org::parse(s).to_org(), s);
     }
+}
+
+#[test]
+fn source_block_switches_and_parameters() {
+    use crate::ast::SourceBlock;
+    use crate::tests::to_ast;
+
+    let to_src_block = to_ast::<SourceBlock>(block_node);
+
+    for (begin, switches, parameters) in [
+        ("rust -n :tangle x", Some("-n"), Some(":tangle x")),
+        (
+            "rust -n 20 -r :tangle x",
+            Some("-n 20 -r"),
+            Some(":tangle x"),
+        ),
+        ("rust +n -i -k", Some("+n -i -k"), None),
+        (
+            r#"rust -l "(ref:%s)" -n :exports code"#,
+            Some(r#"-l "(ref:%s)" -n"#),
+            Some(":exports code"),
+        ),
+        ("rust :var x=-n", None, Some(":var x=-n")),
+        ("rust -x :tangle x", None, Some("-x :tangle x")),
+    ] {
+        let block = to_src_block(&format!("#+begin_src {begin}\n#+end_src\n"));
+        assert_eq!(block.switches().as_deref(), switches, "{begin}");
+        assert_eq!(block.parameters().as_deref(), parameters, "{begin}");
+    }
+
+    insta::assert_debug_snapshot!(
+        to_src_block("#+begin_src rust -n :tangle x\n#+end_src\n").syntax,
+        @r##"
+    SOURCE_BLOCK@0..40
+      BLOCK_BEGIN@0..30
+        TEXT@0..8 "#+begin_"
+        TEXT@8..11 "src"
+        WHITESPACE@11..12 " "
+        SRC_BLOCK_LANGUAGE@12..16 "rust"
+        WHITESPACE@16..17 " "
+        SRC_BLOCK_SWITCHES@17..19 "-n"
+        WHITESPACE@19..20 " "
+        SRC_BLOCK_PARAMETERS@20..29 ":tangle x"
+        NEW_LINE@29..30 "\n"
+      BLOCK_CONTENT@30..30
+      BLOCK_END@30..40
+        TEXT@30..36 "#+end_"
+        TEXT@36..39 "src"
+        NEW_LINE@39..40 "\n"
+    "##
+    );
 }
