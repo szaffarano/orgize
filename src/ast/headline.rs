@@ -221,6 +221,8 @@ impl Headline {
 
     /// Returns priority text
     ///
+    /// Like Org, a priority is a letter, a digit or a number from 10 to 64.
+    ///
     /// ```rust
     /// use orgize::{Org, ast::Headline};
     ///
@@ -228,8 +230,10 @@ impl Headline {
     /// assert_eq!(hdl.priority().unwrap(), "A");
     /// let hdl = Org::parse("** DONE [#B]::").first_node::<Headline>().unwrap();
     /// assert_eq!(hdl.priority().unwrap(), "B");
+    /// let hdl = Org::parse("* [#10] x").first_node::<Headline>().unwrap();
+    /// assert_eq!(hdl.priority().unwrap(), "10");
     /// let hdl = Org::parse("* [#破]").first_node::<Headline>().unwrap();
-    /// assert_eq!(hdl.priority().unwrap(), "破");
+    /// assert!(hdl.priority().is_none());
     /// ```
     pub fn priority(&self) -> Option<Token> {
         self.syntax

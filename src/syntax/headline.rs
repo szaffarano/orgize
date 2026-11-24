@@ -3,8 +3,8 @@ use nom::Parser;
 use nom::{
     branch::alt,
     bytes::complete::{take_while1, take_while_m_n},
-    character::complete::{anychar, space0},
-    combinator::{map, opt, recognize},
+    character::complete::space0,
+    combinator::{map, opt},
     IResult, Input as _,
 };
 
@@ -219,22 +219,27 @@ fn headline_keyword_token(input: Input) -> IResult<Input, (GreenElement, Input),
     }
 }
 
+/// Recognizes a priority value, as Org's `org-priority-value-regexp` does:
+/// a letter, a digit, or a number from 10 to 64
+fn priority_value(input: Input) -> IResult<Input, Input, ()> {
+    let (rest, value) = alt((
+        take_while_m_n(1, 1, |c: char| c.is_ascii_alphabetic()),
+        take_while_m_n(1, 2, |c: char| c.is_ascii_digit()),
+    ))
+    .parse(input)?;
+    match value.as_bytes() {
+        [_] | [b'1'..=b'5', _] | [b'6', b'0'..=b'4'] => Ok((rest, value)),
+        _ => Err(nom::Err::Error(())),
+    }
+}
+
 fn headline_priority_node(input: Input) -> IResult<Input, (GreenElement, Input), ()> {
     let (input, node) = map(
-        (
-            l_bracket_token,
-            hash_token,
-            // org-mode priorities are a letter or a number up to 64
-            alt((
-                take_while_m_n(1, 2, |c: char| c.is_ascii_digit()),
-                recognize(anychar),
-            )),
-            r_bracket_token,
-        ),
+        (l_bracket_token, hash_token, priority_value, r_bracket_token),
         |(l_bracket, hash, priority, r_bracket)| {
             node(
                 HEADLINE_PRIORITY,
-                [l_bracket, hash, priority.token(TEXT), r_bracket],
+                [l_bracket, hash, priority.text_token(), r_bracket],
             )
         },
     )
@@ -414,4 +419,47 @@ fn multi_digit_priority() {
     }
 
     assert!(to_headline("* [#123] too long\n").priority().is_none());
+}
+
+#[test]
+fn priority() {
+    use crate::{ast::Headline, tests::to_ast};
+
+    let to_headline = to_ast::<Headline>(headline_node);
+
+    insta::assert_debug_snapshot!(
+        to_headline("* [#10] x").syntax,
+        @r##"
+    HEADLINE@0..9
+      HEADLINE_STARS@0..1 "*"
+      WHITESPACE@1..2 " "
+      HEADLINE_PRIORITY@2..7
+        L_BRACKET@2..3 "["
+        HASH@3..4 "#"
+        TEXT@4..6 "10"
+        R_BRACKET@6..7 "]"
+      WHITESPACE@7..8 " "
+      HEADLINE_TITLE@8..9
+        TEXT@8..9 "x"
+    "##
+    );
+
+    for (src, priority) in [
+        ("* [#A] x", Some("A")),
+        ("* [#a] x", Some("a")),
+        ("* [#0] x", Some("0")),
+        ("* [#64] x", Some("64")),
+        ("* [#65] x", None),
+        ("* [#07] x", None),
+        ("* [#100] x", None),
+        ("* [#AB] x", None),
+        ("* [#!] x", None),
+    ] {
+        let hdl = to_headline(src);
+        assert_eq!(
+            hdl.priority().map(|p| p.to_string()).as_deref(),
+            priority,
+            "{src}"
+        );
+    }
 }
