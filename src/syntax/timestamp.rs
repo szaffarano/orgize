@@ -89,7 +89,7 @@ fn dayname(i: Input) -> IResult<Input, GreenElement, ()> {
 fn time(i: Input) -> IResult<Input, [GreenElement; 3], ()> {
     map(
         (
-            take_while_m_n(2, 2, |c: char| c.is_ascii_digit()),
+            take_while_m_n(1, 2, |c: char| c.is_ascii_digit()),
             colon_token,
             take_while_m_n(2, 2, |c: char| c.is_ascii_digit()),
         ),
@@ -373,6 +373,42 @@ fn parse() {
       TIMESTAMP_MINUTE@25..27 "39"
       R_BRACKET@27..28 "]"
     "###
+    );
+}
+
+#[test]
+fn one_digit_hour() {
+    use crate::{ast::Timestamp, tests::to_ast};
+
+    let to_timestamp = to_ast::<Timestamp>(timestamp_active_node);
+
+    let ts = to_timestamp("<2026-10-20 Tue 9:00>");
+    assert_eq!(ts.hour_start().unwrap(), "9");
+
+    let ts = to_timestamp("<2026-10-20 Tue 9:00-17:00>");
+    assert!(ts.is_range());
+    insta::assert_debug_snapshot!(
+        ts.syntax,
+        @r#"
+    TIMESTAMP_ACTIVE@0..27
+      L_ANGLE@0..1 "<"
+      TIMESTAMP_YEAR@1..5 "2026"
+      MINUS@5..6 "-"
+      TIMESTAMP_MONTH@6..8 "10"
+      MINUS@8..9 "-"
+      TIMESTAMP_DAY@9..11 "20"
+      WHITESPACE@11..12 " "
+      TIMESTAMP_DAYNAME@12..15 "Tue"
+      WHITESPACE@15..16 " "
+      TIMESTAMP_HOUR@16..17 "9"
+      COLON@17..18 ":"
+      TIMESTAMP_MINUTE@18..20 "00"
+      MINUS@20..21 "-"
+      TIMESTAMP_HOUR@21..23 "17"
+      COLON@23..24 ":"
+      TIMESTAMP_MINUTE@24..26 "00"
+      R_ANGLE@26..27 ">"
+    "#
     );
 }
 
