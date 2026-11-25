@@ -114,12 +114,34 @@ fn list_item_node<'a>(
         ));
     }
 
+    // a bullet at the end of its line starts an item with no text on its first
+    // line: its content, if any, starts on the next line
+    if bullet.s.ends_with(['\n', '\r']) {
+        let (input, (ends_with_empty_blank_lines, content)) =
+            list_item_content_node(input, indent.len(), false)?;
+        let (input, post_blank) = cond(!ends_with_empty_blank_lines, blank_lines).parse(input)?;
+
+        let mut children = vec![
+            indent.token(LIST_ITEM_INDENT),
+            bullet.token(LIST_ITEM_BULLET),
+            content,
+        ];
+        if let Some(post_blank) = post_blank {
+            children.extend(post_blank);
+        }
+
+        return Ok((
+            input,
+            (ends_with_empty_blank_lines, node(LIST_ITEM, children)),
+        ));
+    }
+
     let is_ordered = bullet.s.starts_with(|c: char| c.is_ascii_digit());
     let (input, counter) = opt(list_item_counter).parse(input)?;
     let (input, checkbox) = opt(list_item_checkbox).parse(input)?;
     let (input, tag) = cond(!is_ordered, opt(list_item_tag)).parse(input)?;
     let (input, (ends_with_empty_blank_lines, content)) =
-        list_item_content_node(input, indent.len())?;
+        list_item_content_node(input, indent.len(), true)?;
     let (input, post_blank) = cond(!ends_with_empty_blank_lines, blank_lines).parse(input)?;
 
     let mut children = vec![
@@ -228,8 +250,16 @@ fn list_item_tag(input: Input) -> IResult<Input, (GreenElement, Input), ()> {
     feature = "tracing",
     tracing::instrument(level = "debug", skip(input), fields(input = input.s))
 )]
-fn list_item_content_node(input: Input, indent: usize) -> IResult<Input, (bool, GreenElement), ()> {
-    if memchr(b'\n', input.as_bytes()).is_none() {
+/// Recognizes the content of a list item
+///
+/// If `has_first_line` is true, the first line of `input` is the rest of the
+/// bullet line and always belongs to the item.
+fn list_item_content_node(
+    input: Input,
+    indent: usize,
+    has_first_line: bool,
+) -> IResult<Input, (bool, GreenElement), ()> {
+    if has_first_line && memchr(b'\n', input.as_bytes()).is_none() {
         return Ok((
             input.of(""),
             (
@@ -242,7 +272,7 @@ fn list_item_content_node(input: Input, indent: usize) -> IResult<Input, (bool, 
         ));
     };
 
-    let mut skip_one = true;
+    let mut skip_one = has_first_line;
     let mut i = input;
     let mut children = vec![];
     let mut previous_blank_line: Option<(Input, Input)> = None;
@@ -648,4 +678,59 @@ fn link_with_search_option_is_not_a_tag() {
 
     assert!(Org::parse("- tag :: desc\n").to_html().contains("<dl>"));
     assert!(Org::parse("- tag ::\n").to_html().contains("<dl>"));
+}
+
+#[test]
+fn empty_item() {
+    use crate::{ast::List, tests::to_ast};
+
+    let to_list = to_ast::<List>(list_node);
+
+    insta::assert_debug_snapshot!(
+        to_list("- a\n-\n- b\n").syntax,
+        @r#"
+    LIST@0..10
+      LIST_ITEM@0..4
+        LIST_ITEM_INDENT@0..0 ""
+        LIST_ITEM_BULLET@0..2 "- "
+        LIST_ITEM_CONTENT@2..4
+          PARAGRAPH@2..4
+            TEXT@2..4 "a\n"
+      LIST_ITEM@4..6
+        LIST_ITEM_INDENT@4..4 ""
+        LIST_ITEM_BULLET@4..6 "-\n"
+        LIST_ITEM_CONTENT@6..6
+      LIST_ITEM@6..10
+        LIST_ITEM_INDENT@6..6 ""
+        LIST_ITEM_BULLET@6..8 "- "
+        LIST_ITEM_CONTENT@8..10
+          PARAGRAPH@8..10
+            TEXT@8..10 "b\n"
+    "#
+    );
+
+    // content of an empty item starts on the next line
+    insta::assert_debug_snapshot!(
+        to_list("-\n  text\n-\n\n- c").syntax,
+        @r#"
+    LIST@0..15
+      LIST_ITEM@0..9
+        LIST_ITEM_INDENT@0..0 ""
+        LIST_ITEM_BULLET@0..2 "-\n"
+        LIST_ITEM_CONTENT@2..9
+          PARAGRAPH@2..9
+            TEXT@2..9 "  text\n"
+      LIST_ITEM@9..12
+        LIST_ITEM_INDENT@9..9 ""
+        LIST_ITEM_BULLET@9..11 "-\n"
+        LIST_ITEM_CONTENT@11..11
+        BLANK_LINE@11..12 "\n"
+      LIST_ITEM@12..15
+        LIST_ITEM_INDENT@12..12 ""
+        LIST_ITEM_BULLET@12..14 "- "
+        LIST_ITEM_CONTENT@14..15
+          PARAGRAPH@14..15
+            TEXT@14..15 "c"
+    "#
+    );
 }
